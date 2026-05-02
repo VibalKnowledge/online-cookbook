@@ -19,6 +19,10 @@ const els = {
   decideResults: document.getElementById('decideResults')
 };
 
+function setStatus(message) {
+  els.status.textContent = message;
+}
+
 async function api(path, options = {}) {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
@@ -43,32 +47,42 @@ function renderCards(recipes) {
     return;
   }
 
-  els.recipeCards.innerHTML = recipes.map((r) => `
+  els.recipeCards.innerHTML = recipes
+    .map(
+      (r) => `
     <article class="card">
       <h3>${escapeHtml(r.name)}</h3>
       <p>${escapeHtml(r.category)}</p>
       <p class="meta">Source: connected folder (${r.sourceType})</p>
       <button data-view="${r.id}">Open Recipe</button>
     </article>
-  `).join('');
+  `
+    )
+    .join('');
 
   els.recipeCards.querySelectorAll('[data-view]').forEach((btn) => {
-    btn.addEventListener('click', () => showRecipe(btn.getAttribute('data-view')));
+    btn.addEventListener('click', () => {
+      showRecipe(btn.getAttribute('data-view')).catch((err) => {
+        setStatus(`Error opening recipe: ${err.message}`);
+      });
+    });
   });
 }
 
 function renderCategories() {
-  const categoryButtons = [''].concat(state.categories).map((cat) => {
-    const active = state.selectedCategory === cat ? 'active' : '';
-    const label = cat || 'All categories';
-    return `<button class="chip ${active}" data-category="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
-  });
+  const categoryButtons = ['']
+    .concat(state.categories)
+    .map((cat) => {
+      const active = state.selectedCategory === cat ? 'active' : '';
+      const label = cat || 'All categories';
+      return `<button class="chip ${active}" data-category="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
+    });
   els.categories.innerHTML = categoryButtons.join('');
 
   els.categories.querySelectorAll('[data-category]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.selectedCategory = btn.getAttribute('data-category');
-      loadRecipes();
+      loadRecipes().catch((err) => setStatus(`Error loading recipes: ${err.message}`));
     });
   });
 }
@@ -112,12 +126,16 @@ async function showRecipe(id) {
     e.preventDefault();
     const text = e.target.text.value.trim();
     if (!text) return;
-    const saved = await api(`/api/recipes/${r.id}`, {
-      method: 'POST',
-      body: JSON.stringify({ text })
-    });
-    document.getElementById('commentsList').innerHTML = renderComments(saved.comments);
-    e.target.reset();
+    try {
+      const saved = await api(`/api/recipes/${r.id}`, {
+        method: 'POST',
+        body: JSON.stringify({ text })
+      });
+      document.getElementById('commentsList').innerHTML = renderComments(saved.comments);
+      e.target.reset();
+    } catch (err) {
+      setStatus(`Error saving comment: ${err.message}`);
+    }
   });
 
   els.recipeDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -125,12 +143,16 @@ async function showRecipe(id) {
 
 function renderComments(comments) {
   if (!comments?.length) return '<p class="meta">No comments yet.</p>';
-  return comments.map((c) => `
+  return comments
+    .map(
+      (c) => `
     <div class="comment">
       <p>${escapeHtml(c.text)}</p>
       <p class="meta">Saved: ${new Date(c.createdAt).toLocaleString()}</p>
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 }
 
 function keywordScore(recipe, words) {
@@ -157,17 +179,23 @@ function helpDecide() {
     return;
   }
 
-  els.decideResults.innerHTML = ranked.map((r) => `
+  els.decideResults.innerHTML = ranked
+    .map(
+      (r) => `
     <article class="card">
       <h3>${escapeHtml(r.name)}</h3>
       <p>${escapeHtml(r.category)}</p>
       <p class="meta">Matched from recipes in your connected folder.</p>
       <button data-view="${r.id}">Open Recipe</button>
     </article>
-  `).join('');
+  `
+    )
+    .join('');
 
   els.decideResults.querySelectorAll('[data-view]').forEach((btn) => {
-    btn.addEventListener('click', () => showRecipe(btn.getAttribute('data-view')));
+    btn.addEventListener('click', () => {
+      showRecipe(btn.getAttribute('data-view')).catch((err) => setStatus(`Error opening recipe: ${err.message}`));
+    });
   });
 }
 
@@ -182,14 +210,14 @@ function escapeHtml(text) {
 
 async function boot() {
   const status = await api('/api/status');
-  els.status.textContent = `${status.recipeCount} recipes loaded from connected folder`;
+  setStatus(`${status.recipeCount} recipes loaded from connected folder`);
 
   state.categories = await api('/api/categories');
   await loadRecipes();
 
   els.search.addEventListener('input', () => {
     state.search = els.search.value.trim();
-    loadRecipes();
+    loadRecipes().catch((err) => setStatus(`Error loading recipes: ${err.message}`));
   });
 
   els.showAddForm.addEventListener('click', () => {
@@ -208,20 +236,33 @@ async function boot() {
       prepTime: form.get('prepTime'),
       cookTime: form.get('cookTime'),
       servings: form.get('servings'),
-      ingredients: String(form.get('ingredients')).split(/\r?\n/).map((s) => s.trim()).filter(Boolean),
-      instructions: String(form.get('instructions')).split(/\r?\n/).map((s) => s.trim()).filter(Boolean),
-      notes: String(form.get('notes')).split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+      ingredients: String(form.get('ingredients'))
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+      instructions: String(form.get('instructions'))
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+      notes: String(form.get('notes'))
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean)
     };
 
-    await api('/api/recipes', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Recipe saved.');
-    e.target.reset();
+    try {
+      await api('/api/recipes', { method: 'POST', body: JSON.stringify(payload) });
+      alert('Recipe saved.');
+      e.target.reset();
 
-    state.categories = await api('/api/categories');
-    await loadRecipes();
+      state.categories = await api('/api/categories');
+      await loadRecipes();
+    } catch (err) {
+      setStatus(`Error saving recipe: ${err.message}`);
+    }
   });
 }
 
 boot().catch((err) => {
-  els.status.textContent = `Error: ${err.message}`;
+  setStatus(`Error: ${err.message}`);
 });

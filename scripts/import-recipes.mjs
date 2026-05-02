@@ -1,11 +1,38 @@
 import { getBaseRecipes } from '../lib/cookbook.js';
 import { getDb } from '../lib/firebase.js';
 
+async function deletePriorImportedDocs(db) {
+  const snap = await db.collection('recipes').where('sourceType', '==', 'imported-docx').get();
+  if (snap.empty) return 0;
+
+  let deleted = 0;
+  let batch = db.batch();
+  let opCount = 0;
+
+  for (const doc of snap.docs) {
+    batch.delete(doc.ref);
+    opCount += 1;
+    deleted += 1;
+
+    if (opCount === 450) {
+      await batch.commit();
+      batch = db.batch();
+      opCount = 0;
+    }
+  }
+
+  if (opCount > 0) await batch.commit();
+  return deleted;
+}
+
 async function main() {
   const db = getDb();
   if (!db) {
     throw new Error('Firebase is not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.');
   }
+
+  const deleted = await deletePriorImportedDocs(db);
+  if (deleted) console.log(`Removed ${deleted} previous imported-docx records.`);
 
   const recipes = await getBaseRecipes();
   if (!recipes.length) {
@@ -27,6 +54,7 @@ async function main() {
       prepTime: recipe.prepTime || '',
       cookTime: recipe.cookTime || '',
       servings: recipe.servings || '',
+      rawText: recipe.rawText || '',
       importedAt: new Date().toISOString()
     };
 
