@@ -1,10 +1,13 @@
-import { getBaseRecipes, getCookbookRoot } from '../lib/cookbook.js';
+import { getAllRecipes } from '../lib/recipes.js';
 
 export default async function handler(_req, res) {
-  const recipes = await getBaseRecipes();
-  res.status(200).json({
-    root: getCookbookRoot(),
-    recipeCount: recipes.length,
-    message: 'All recipes and categories come only from the connected folder. New recipes/comments are stored in Firebase for Vercel runtime persistence.'
-  });
+  try {
+    const recipes = await getAllRecipes();
+    return res.status(200).json({
+      recipeCount: recipes.length,
+      message: 'All app recipes are served from Firebase.'
+    });
+  } catch (err) {
+    return res.status(500).json({ error: `Status check failed: ${err.message}` });
+  }
 }
