@@ -24,8 +24,17 @@ async function api(path, options = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...options
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Request failed');
-  return res.json();
+
+  const raw = await res.text();
+  let data;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(`API ${res.status}: ${raw.slice(0, 180)}`);
+  }
+
+  if (!res.ok) throw new Error(data.error || `API ${res.status}`);
+  return data;
 }
 
 function renderCards(recipes) {
@@ -83,19 +92,19 @@ async function showRecipe(id) {
 
   els.recipeDetail.innerHTML = `
     <h2>${escapeHtml(r.name)}</h2>
-    <p class="meta">Category: ${escapeHtml(r.category)} | Source path: ${escapeHtml(r.sourcePath)}</p>
-    <p class="meta">All content for this recipe comes from your connected folder.</p>
+    <p class="meta">Category: ${escapeHtml(r.category)} | Source path: ${escapeHtml(r.sourcePath || 'firebase')}</p>
+    <p class="meta">All content for this recipe comes from your connected cookbook sources.</p>
     <h3>Ingredients</h3>
-    ${li(r.ingredients)}
+    ${li(r.ingredients || [])}
     <h3>Instructions</h3>
-    ${li(r.instructions)}
+    ${li(r.instructions || [])}
     <h3>Notes</h3>
-    ${li(r.notes)}
+    ${li(r.notes || [])}
     <h3>Comments & Improvements</h3>
     <div id="commentsList">${renderComments(r.comments)}</div>
     <form id="commentForm">
       <textarea name="text" required placeholder="Add your changes, substitutions, or tips..."></textarea>
-      <button type="submit">Save comment to connected folder</button>
+      <button type="submit">Save comment</button>
     </form>
   `;
 
@@ -103,7 +112,7 @@ async function showRecipe(id) {
     e.preventDefault();
     const text = e.target.text.value.trim();
     if (!text) return;
-    const saved = await api(`/api/recipes/${r.id}/comments`, {
+    const saved = await api(`/api/recipes/${r.id}`, {
       method: 'POST',
       body: JSON.stringify({ text })
     });
@@ -173,7 +182,7 @@ function escapeHtml(text) {
 
 async function boot() {
   const status = await api('/api/status');
-  els.status.textContent = `${status.recipeCount} recipes loaded from connected folder`; 
+  els.status.textContent = `${status.recipeCount} recipes loaded from connected folder`;
 
   state.categories = await api('/api/categories');
   await loadRecipes();
@@ -205,7 +214,7 @@ async function boot() {
     };
 
     await api('/api/recipes', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Recipe saved to connected folder.');
+    alert('Recipe saved.');
     e.target.reset();
 
     state.categories = await api('/api/categories');

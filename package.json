@@ -8,7 +8,6 @@
     "start": "vercel dev"
   },
   "dependencies": {
-    "firebase-admin": "^12.7.0",
-    "mammoth": "^1.8.0"
+    "firebase-admin": "^12.7.0"
   }
 }
