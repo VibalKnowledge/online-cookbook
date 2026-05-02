@@ -1,5 +1,5 @@
 import { getDb } from '../../lib/firebase.js';
-import { filterRecipes, getAllRecipes, toSummaryList } from '../../lib/recipes.js';
+import { queryRecipes, toSummaryList } from '../../lib/recipes.js';
 
 export default async function handler(req, res) {
   try {
@@ -14,6 +14,7 @@ export default async function handler(req, res) {
 
       const payload = {
         name: String(name).trim(),
+        nameLower: String(name).toLowerCase().trim(),
         category: String(category).trim(),
         ingredients: ingredients.map((x) => String(x).trim()).filter(Boolean),
         instructions: instructions.map((x) => String(x).trim()).filter(Boolean),
@@ -32,10 +33,10 @@ export default async function handler(req, res) {
 
     const search = String(req.query.search || '').trim();
     const category = String(req.query.category || '').trim();
+    const limit = req.query.limit ? Number(req.query.limit) : 120;
 
-    const recipes = await getAllRecipes();
-    const filtered = filterRecipes(recipes, search, category);
-    return res.status(200).json(toSummaryList(filtered));
+    const recipes = await queryRecipes({ search, category, limit });
+    return res.status(200).json(toSummaryList(recipes));
   } catch (err) {
     return res.status(500).json({ error: `Failed to load recipes: ${err.message}` });
   }

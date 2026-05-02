@@ -25,6 +25,18 @@ async function deletePriorImportedDocs(db) {
   return deleted;
 }
 
+async function upsertMetadata(db, recipes) {
+  const categories = [...new Set(recipes.map((r) => r.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  await db.collection('metadata').doc('catalog').set(
+    {
+      categories,
+      recipeCount: recipes.length,
+      updatedAt: new Date().toISOString()
+    },
+    { merge: true }
+  );
+}
+
 async function main() {
   const db = getDb();
   if (!db) {
@@ -44,6 +56,7 @@ async function main() {
   for (const recipe of recipes) {
     const payload = {
       name: recipe.name,
+      nameLower: String(recipe.name || '').toLowerCase().trim(),
       category: recipe.category,
       sourceType: 'imported-docx',
       sourcePath: recipe.sourcePath,
@@ -60,8 +73,10 @@ async function main() {
 
     await db.collection('recipes').doc(recipe.id).set(payload, { merge: true });
     count += 1;
+    if (count % 250 === 0) console.log(`Imported ${count}...`);
   }
 
+  await upsertMetadata(db, recipes);
   console.log(`Imported ${count} recipes into Firestore collection: recipes`);
 }
 

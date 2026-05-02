@@ -1,9 +1,9 @@
-import { getAllRecipes, getCategories } from '../lib/recipes.js';
+import { getCategoriesFromMetadata } from '../lib/recipes.js';
 
 export default async function handler(_req, res) {
   try {
-    const recipes = await getAllRecipes();
-    return res.status(200).json(getCategories(recipes));
+    const categories = await getCategoriesFromMetadata();
+    return res.status(200).json(categories);
   } catch (err) {
     return res.status(500).json({ error: `Failed to load categories: ${err.message}` });
   }
