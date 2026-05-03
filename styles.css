@@ -1,0 +1,102 @@
+:root {
+  --bg: #f7f1e8;
+  --bg-soft: #efe4d4;
+  --card: #fffaf2;
+  --ink: #3f2d20;
+  --muted: #77604e;
+  --accent: #b4603c;
+  --accent-2: #557a5b;
+  --border: #dbc8b1;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  background: radial-gradient(circle at 20% 0%, #fff8ec, var(--bg));
+  color: var(--ink);
+}
+
+main {
+  width: min(1100px, 92vw);
+  margin: 1rem auto 3rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.hero {
+  padding: 2rem 4vw 1rem;
+  background: linear-gradient(120deg, #f6e8d3, #ead7bd);
+  border-bottom: 1px solid var(--border);
+}
+
+h1, h2 { margin: 0 0 .5rem 0; }
+.sub, .hint { color: var(--muted); margin: 0 0 .75rem 0; }
+.badge {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .4rem .8rem;
+  font-size: .9rem;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 6px 20px rgba(63,45,32,0.05);
+}
+
+input, textarea, button {
+  width: 100%;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .65rem .75rem;
+  margin: .4rem 0;
+}
+textarea { min-height: 110px; }
+button {
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+}
+button:hover { filter: brightness(1.06); }
+
+.section-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.chip {
+  width: auto;
+  padding: .45rem .8rem;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+.chip.active { background: var(--accent-2); color: #fff; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .8rem;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .8rem;
+}
+.card h3 { margin: 0 0 .5rem 0; font-size: 1.05rem; }
+.card p { margin: .2rem 0; color: var(--muted); }
+.card button { margin-top: .6rem; }
+
+.hidden { display: none; }
+.decide-row { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
+.comment { border-top: 1px dashed var(--border); padding: .55rem 0; }
+.meta { color: var(--muted); font-size: .92rem; }
+
+@media (max-width: 760px) {
+  .decide-row, .section-head { grid-template-columns: 1fr; display: grid; }
+}

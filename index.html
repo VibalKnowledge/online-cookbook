@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Connected Cookbook</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <h1>My Connected Cookbook</h1>
+    <p class="sub">Every recipe shown here comes from your connected folder and stays within it.</p>
+    <p id="status" class="badge">Loading connected folder...</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <input id="search" type="search" placeholder="Search recipes from this folder only..." />
+      <div id="categories" class="chips"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Help me decide what to eat</h2>
+      <p class="hint">Describe your mood: cozy, light, spicy, quick, comforting...</p>
+      <div class="decide-row">
+        <input id="decideInput" type="text" placeholder="I want something quick and comforting" />
+        <button id="decideBtn">Recommend from my recipes</button>
+      </div>
+      <div id="decideResults" class="cards"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Recipes in connected folder</h2>
+        <button id="showAddForm">Add New Recipe</button>
+      </div>
+      <div id="recipeCards" class="cards"></div>
+    </section>
+
+    <section id="addRecipeSection" class="panel hidden">
+      <h2>Add a recipe to the connected folder</h2>
+      <form id="addRecipeForm">
+        <input name="name" required placeholder="Recipe name" />
+        <input name="category" required placeholder="Category" />
+        <input name="prepTime" placeholder="Prep time (optional)" />
+        <input name="cookTime" placeholder="Cook time (optional)" />
+        <input name="servings" placeholder="Servings (optional)" />
+        <textarea name="ingredients" required placeholder="Ingredients, one per line"></textarea>
+        <textarea name="instructions" required placeholder="Instructions, one per line"></textarea>
+        <textarea name="notes" placeholder="Notes or tips"></textarea>
+        <button type="submit">Save to connected folder</button>
+      </form>
+    </section>
+
+    <section id="recipeDetail" class="panel hidden"></section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
