@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joanne's Cookbook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-content">
+      <h1 class="header-title">Joanne's Cookbook</h1>
+      <p class="header-subtitle">~5,000 family recipes</p>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="search-section">
+      <div class="search-toggle">
+        <button class="toggle-btn active" data-mode="name">Search by Name</button>
+        <button class="toggle-btn" data-mode="craving">What do I feel like?</button>
+      </div>
+
+      <div class="search-container">
+        <div id="name-search" class="search-input-wrap">
+          <input
+            type="text"
+            id="name-input"
+            class="search-input"
+            placeholder="Search recipes by name..."
+            autocomplete="off"
+          >
+        </div>
+        <div id="craving-search" class="search-input-wrap hidden">
+          <textarea
+            id="craving-input"
+            class="search-textarea"
+            placeholder="I'm craving something warm and cheesy..."
+            rows="3"
+          ></textarea>
+          <button id="craving-btn" class="craving-search-btn">Find Recipes</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p>Searching recipes...</p>
+    </div>
+
+    <section class="results-section">
+      <h2 id="results-heading" class="results-heading">Discover Recipes</h2>
+      <div id="results-grid" class="results-grid"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <p>No recipes found. Try a different search!</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Recipe Detail Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <button id="modal-close" class="modal-close">&times;</button>
+      <div id="modal-loading" class="modal-loading hidden">
+        <div class="spinner"></div>
+      </div>
+      <div id="modal-content" class="modal-content">
+        <h2 id="modal-title" class="modal-title"></h2>
+        <div class="modal-meta">
+          <span id="modal-category" class="badge"></span>
+          <span id="modal-subcategory" class="modal-subcategory"></span>
+          <span id="modal-serves" class="modal-serves"></span>
+        </div>
+        <div id="modal-ingredients-section" class="modal-section">
+          <h3>Ingredients</h3>
+          <ul id="modal-ingredients" class="ingredients-list"></ul>
+        </div>
+        <div id="modal-instructions-section" class="modal-section">
+          <h3>Instructions</h3>
+          <div id="modal-instructions" class="instructions-text"></div>
+        </div>
+        <div id="modal-notes-section" class="modal-section">
+          <h3>Notes</h3>
+          <p id="modal-notes" class="notes-text"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
