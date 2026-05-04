@@ -757,6 +757,197 @@ body {
   padding: 0.5rem 0;
 }
 
+/* ===== Auth Wall (Sign-in Screen) ===== */
+.auth-wall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.auth-wall h2 {
+  font-size: 1.6rem;
+  color: var(--purple);
+  margin-bottom: 0.5rem;
+}
+
+.auth-wall p {
+  color: var(--text-light);
+  margin-bottom: 1.5rem;
+  font-size: 1.05rem;
+}
+
+.auth-wall .google-sign-in-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text);
+  cursor: pointer;
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+
+.auth-wall .google-sign-in-btn:hover {
+  border-color: var(--purple);
+  box-shadow: 0 4px 12px var(--card-shadow);
+}
+
+.auth-wall .google-sign-in-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+/* ===== Add Recipe Button ===== */
+.add-recipe-btn {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 1rem;
+  border: 2px solid rgba(255,255,255,0.6);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--white);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.add-recipe-btn:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--white);
+}
+
+/* ===== Add Recipe Modal ===== */
+.add-recipe-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.add-recipe-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.add-recipe-form label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--purple);
+}
+
+.add-recipe-form input[type="text"],
+.add-recipe-form textarea {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.8rem;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: var(--white);
+  transition: border-color var(--transition);
+  width: 100%;
+}
+
+.add-recipe-form input[type="text"]:focus,
+.add-recipe-form textarea:focus {
+  border-color: var(--purple);
+}
+
+.add-recipe-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.add-recipe-form .form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.add-recipe-form .form-row .form-group {
+  flex: 1;
+}
+
+.add-recipe-submit {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: var(--white);
+  cursor: pointer;
+  transition: opacity var(--transition);
+  align-self: flex-end;
+}
+
+.add-recipe-submit:hover {
+  opacity: 0.9;
+}
+
+.add-recipe-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-recipe-status {
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.add-recipe-status.success {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.add-recipe-status.error {
+  color: #d32f2f;
+}
+
+/* ===== Added By Badge ===== */
+.added-by-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #E8F5E9;
+  color: #2e7d32;
+  white-space: nowrap;
+}
+
+.modal-added-by {
+  font-size: 0.85rem;
+  color: #2e7d32;
+  font-style: italic;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .add-recipe-form .form-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .auth-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+  }
+}
+
 /* ===== Utility ===== */
 .hidden {
   display: none !important;

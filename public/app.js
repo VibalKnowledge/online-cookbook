@@ -2,7 +2,6 @@
   'use strict';
 
   // ===== Firebase Config =====
-  // TODO: Replace with your Firebase project config
   var firebaseConfig = {
     apiKey: "AIzaSyAssNdy6WYV3MTscTeojOpepureKbgRfrg",
     authDomain: "family-cookbook-78dee.firebaseapp.com",
@@ -12,17 +11,13 @@
     appId: "1:268350824549:web:0532055065abe036de268c"
   };
 
-  // Initialize Firebase
   var firebaseApp = null;
   var db = null;
   var auth = null;
   var currentUser = null;
 
   function initFirebase() {
-    if (!firebaseConfig.apiKey) {
-      console.warn('Firebase not configured — notes and comments disabled');
-      return false;
-    }
+    if (!firebaseConfig.apiKey) return false;
     try {
       firebaseApp = firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
@@ -37,6 +32,11 @@
   var firebaseReady = initFirebase();
 
   // ===== DOM Elements =====
+  var authWall = document.getElementById('auth-wall');
+  var authWallSignIn = document.getElementById('auth-wall-sign-in');
+  var appMain = document.getElementById('app-main');
+  var authBar = document.getElementById('auth-bar');
+
   var nameInput = document.getElementById('name-input');
   var cravingInput = document.getElementById('craving-input');
   var cravingBtn = document.getElementById('craving-btn');
@@ -52,6 +52,7 @@
   var modalLoading = document.getElementById('modal-loading');
   var modalContent = document.getElementById('modal-content');
   var modalTitle = document.getElementById('modal-title');
+  var modalAddedBy = document.getElementById('modal-added-by');
   var modalCategory = document.getElementById('modal-category');
   var modalSubcategory = document.getElementById('modal-subcategory');
   var modalServes = document.getElementById('modal-serves');
@@ -65,9 +66,6 @@
   var apiKeySave = document.getElementById('api-key-save');
   var apiKeyStatus = document.getElementById('api-key-status');
 
-  // Auth DOM
-  var authBar = document.getElementById('auth-bar');
-
   // Notes DOM
   var myNotesSection = document.getElementById('my-notes-section');
   var myNotesTextarea = document.getElementById('my-notes-textarea');
@@ -75,11 +73,17 @@
   var myNotesStatus = document.getElementById('my-notes-status');
 
   // Comments DOM
-  var commentsSection = document.getElementById('comments-section');
   var commentsList = document.getElementById('comments-list');
   var commentForm = document.getElementById('comment-form');
   var commentInput = document.getElementById('comment-input');
   var commentSignInPrompt = document.getElementById('comment-sign-in-prompt');
+
+  // Add Recipe DOM
+  var addRecipeOverlay = document.getElementById('add-recipe-overlay');
+  var addRecipeCloseBtn = document.getElementById('add-recipe-close');
+  var addRecipeForm = document.getElementById('add-recipe-form');
+  var addRecipeStatus = document.getElementById('add-recipe-status');
+  var addRecipeSubmit = document.getElementById('add-recipe-submit');
 
   var currentMode = 'name';
   var debounceTimer = null;
@@ -88,48 +92,152 @@
   var fuse = null;
   var currentModalRecipeId = null;
   var notesSaveTimer = null;
+  var userRecipes = []; // recipes from Firestore
+  var recipesLoaded = false;
+  var nextUserRecipeId = 100000; // IDs for user-added recipes start high
 
-  // ===== Auth =====
+  // ===== Auth Wall =====
+  function showAuthWall() {
+    authWall.classList.remove('hidden');
+    appMain.classList.add('hidden');
+  }
+
+  function hideAuthWall() {
+    authWall.classList.add('hidden');
+    appMain.classList.remove('hidden');
+  }
+
+  authWallSignIn.addEventListener('click', function () {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(function (err) {
+      console.error('Sign-in error:', err);
+    });
+  });
+
+  // ===== Auth Bar =====
   function renderAuthBar() {
-    if (!firebaseReady) {
+    if (!firebaseReady || !currentUser) {
       authBar.classList.add('hidden');
       return;
     }
     authBar.classList.remove('hidden');
-    if (currentUser) {
-      var photoHTML = currentUser.photoURL
-        ? '<img class="user-avatar" src="' + currentUser.photoURL + '" alt="">'
-        : '';
-      var displayName = currentUser.displayName || currentUser.email || 'User';
-      authBar.innerHTML =
-        '<div class="user-info">' +
-          photoHTML +
-          '<span class="user-name">' + displayName + '</span>' +
-        '</div>' +
-        '<button class="auth-btn" id="sign-out-btn">Sign Out</button>';
-      document.getElementById('sign-out-btn').addEventListener('click', function () {
-        auth.signOut();
-      });
-    } else {
-      authBar.innerHTML =
-        '<button class="auth-btn" id="sign-in-btn">Sign in with Google</button>';
-      document.getElementById('sign-in-btn').addEventListener('click', function () {
-        var provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(function (err) {
-          console.error('Sign-in error:', err);
-        });
-      });
-    }
+    var photoHTML = currentUser.photoURL
+      ? '<img class="user-avatar" src="' + currentUser.photoURL + '" alt="">'
+      : '';
+    var displayName = currentUser.displayName || currentUser.email || 'User';
+    authBar.innerHTML =
+      '<div class="user-info">' +
+        photoHTML +
+        '<span class="user-name">' + displayName + '</span>' +
+      '</div>' +
+      '<button class="add-recipe-btn" id="add-recipe-btn">+ Add Recipe</button>' +
+      '<button class="auth-btn" id="sign-out-btn">Sign Out</button>';
+
+    document.getElementById('sign-out-btn').addEventListener('click', function () {
+      auth.signOut();
+    });
+    document.getElementById('add-recipe-btn').addEventListener('click', function () {
+      openAddRecipeModal();
+    });
   }
 
+  // ===== Auth State =====
   if (firebaseReady) {
     auth.onAuthStateChanged(function (user) {
       currentUser = user;
       renderAuthBar();
+      if (user) {
+        hideAuthWall();
+        if (!recipesLoaded) {
+          initApp();
+        }
+      } else {
+        showAuthWall();
+      }
       // Refresh modal if open
       if (currentModalRecipeId !== null && !modalOverlay.classList.contains('hidden')) {
         loadNotesAndComments(currentModalRecipeId);
       }
+    });
+  } else {
+    // Firebase not ready — just load app without auth
+    initApp();
+  }
+
+  // ===== Init App =====
+  function initApp() {
+    if (recipesLoaded) return;
+    recipesLoaded = true;
+
+    showLoading();
+    fetch('/recipes.json')
+      .then(function (res) {
+        if (!res.ok) throw new Error('Failed to load recipes');
+        return res.json();
+      })
+      .then(function (data) {
+        allRecipes = data;
+        allRecipes.forEach(function (r) {
+          recipesById[r.id] = r;
+        });
+
+        // Load user-added recipes from Firestore
+        if (firebaseReady) {
+          loadUserRecipes().then(function () {
+            buildSearchIndex();
+            showRandomRecipes();
+          });
+        } else {
+          buildSearchIndex();
+          showRandomRecipes();
+        }
+      })
+      .catch(function (err) {
+        console.error('Failed to load recipes:', err);
+        hideLoading();
+        emptyState.classList.remove('hidden');
+      });
+  }
+
+  function loadUserRecipes() {
+    return db.collection('recipes').get()
+      .then(function (snapshot) {
+        snapshot.forEach(function (doc) {
+          var data = doc.data();
+          var recipe = {
+            id: 'user_' + doc.id,
+            title: data.title || '',
+            category: data.category || '',
+            subcategory: data.subcategory || '',
+            ingredients: data.ingredients || '',
+            instructions: data.instructions || '',
+            notes: data.notes || '',
+            serves: data.serves || '',
+            addedBy: data.addedBy || 'Someone',
+            addedByUid: data.addedByUid || '',
+            firestoreId: doc.id
+          };
+          allRecipes.push(recipe);
+          recipesById[recipe.id] = recipe;
+        });
+      })
+      .catch(function (err) {
+        console.error('Error loading user recipes:', err);
+      });
+  }
+
+  function buildSearchIndex() {
+    fuse = new Fuse(allRecipes, {
+      keys: [
+        { name: 'title', weight: 5 },
+        { name: 'subcategory', weight: 1 }
+      ],
+      threshold: 0.35,
+      distance: 200,
+      includeScore: true,
+      minMatchCharLength: 2,
+      ignoreLocation: true,
+      useExtendedSearch: true
     });
   }
 
@@ -235,7 +343,7 @@
 
       var title = document.createElement('div');
       title.className = 'recipe-card-title';
-      title.textContent = recipe.title || recipe.name || 'Untitled';
+      title.textContent = recipe.title || 'Untitled';
 
       var meta = document.createElement('div');
       meta.className = 'recipe-card-meta';
@@ -252,6 +360,13 @@
         sub.className = 'recipe-card-subcategory';
         sub.textContent = recipe.subcategory;
         meta.appendChild(sub);
+      }
+
+      if (recipe.addedBy) {
+        var addedBadge = document.createElement('span');
+        addedBadge.className = 'added-by-badge';
+        addedBadge.textContent = 'Added by ' + recipe.addedBy;
+        meta.appendChild(addedBadge);
       }
 
       if (recipe.serves) {
@@ -304,7 +419,6 @@
     if (!fuse) return;
 
     var words = query.trim().split(/\s+/).filter(function (w) { return w.length > 0; });
-
     var fuzzyWords = words.filter(function (w) { return w.length >= 2; });
     var prefixWords = words.filter(function (w) { return w.length < 2; });
 
@@ -354,13 +468,6 @@
 
     if (!apiKey) {
       renderCards(candidateRecipes.slice(0, 24), 'Recipes for your craving');
-      var note = document.createElement('p');
-      note.className = 'craving-note';
-      note.textContent = 'Tip: Set a Gemini API key for smarter craving-based results.';
-      resultsGrid.parentNode.insertBefore(note, resultsGrid);
-      setTimeout(function () {
-        if (note.parentNode) note.parentNode.removeChild(note);
-      }, 15000);
       return;
     }
 
@@ -372,7 +479,7 @@
       var prompt = 'A user is craving: "' + query.trim() + '"\n\n' +
         'Here are candidate recipes (JSON array with id, title, category, subcategory):\n' +
         JSON.stringify(recipeSummaries) + '\n\n' +
-        'Rank the recipes by how well they match the craving. Return ONLY a JSON array of recipe IDs (numbers) in order from best match to worst match. ' +
+        'Rank the recipes by how well they match the craving. Return ONLY a JSON array of recipe IDs in order from best match to worst match. ' +
         'Include at most 24 recipes. Return ONLY the JSON array, no other text.';
 
       var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey, {
@@ -383,9 +490,7 @@
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Gemini API error: ' + response.status);
-      }
+      if (!response.ok) throw new Error('Gemini API error: ' + response.status);
 
       var data = await response.json();
       var text = data.candidates[0].content.parts[0].text;
@@ -430,7 +535,7 @@
     }
   });
 
-  // ===== Modal =====
+  // ===== Recipe Detail Modal =====
   function openModal(id) {
     var recipe = recipesById[id];
     if (!recipe) return;
@@ -446,7 +551,15 @@
   }
 
   function populateModal(recipe) {
-    modalTitle.textContent = recipe.title || recipe.name || 'Untitled';
+    modalTitle.textContent = recipe.title || 'Untitled';
+
+    // Added by
+    if (recipe.addedBy) {
+      modalAddedBy.textContent = 'Added by ' + recipe.addedBy;
+      modalAddedBy.classList.remove('hidden');
+    } else {
+      modalAddedBy.classList.add('hidden');
+    }
 
     if (recipe.category) {
       modalCategory.textContent = recipe.category;
@@ -495,43 +608,35 @@
 
   // ===== Private Notes (Firestore) =====
   function loadNotesAndComments(recipeId) {
-    // Reset UI
     myNotesTextarea.value = '';
     myNotesStatus.textContent = '';
     commentsList.innerHTML = '';
 
-    if (!firebaseReady) {
-      myNotesSection.classList.add('hidden');
-      commentForm.classList.add('hidden');
-      commentSignInPrompt.classList.add('hidden');
-      return;
-    }
-
-    // Private notes — only if signed in
-    if (currentUser) {
-      myNotesSection.classList.remove('hidden');
-      commentForm.classList.remove('hidden');
-      commentSignInPrompt.classList.add('hidden');
-
-      // Load user's private note
-      db.collection('notes')
-        .doc(currentUser.uid + '_' + recipeId)
-        .get()
-        .then(function (doc) {
-          if (doc.exists && currentModalRecipeId === recipeId) {
-            myNotesTextarea.value = doc.data().text || '';
-          }
-        })
-        .catch(function (err) {
-          console.error('Error loading note:', err);
-        });
-    } else {
+    if (!firebaseReady || !currentUser) {
       myNotesSection.classList.add('hidden');
       commentForm.classList.add('hidden');
       commentSignInPrompt.classList.remove('hidden');
+      loadComments(recipeId);
+      return;
     }
 
-    // Load public comments
+    myNotesSection.classList.remove('hidden');
+    commentForm.classList.remove('hidden');
+    commentSignInPrompt.classList.add('hidden');
+
+    // Load user's private note
+    db.collection('notes')
+      .doc(currentUser.uid + '_' + recipeId)
+      .get()
+      .then(function (doc) {
+        if (doc.exists && currentModalRecipeId === recipeId) {
+          myNotesTextarea.value = doc.data().text || '';
+        }
+      })
+      .catch(function (err) {
+        console.error('Error loading note:', err);
+      });
+
     loadComments(recipeId);
   }
 
@@ -545,7 +650,6 @@
     myNotesStatus.textContent = 'Saving...';
 
     if (!text) {
-      // Delete empty note
       db.collection('notes').doc(docId).delete()
         .then(function () {
           myNotesStatus.textContent = '✓ Cleared';
@@ -573,7 +677,6 @@
     }
   });
 
-  // Auto-save on typing (debounced)
   myNotesTextarea.addEventListener('input', function () {
     clearTimeout(notesSaveTimer);
     myNotesStatus.textContent = '';
@@ -592,7 +695,7 @@
       .where('recipeId', '==', recipeId)
       .get()
       .then(function (snapshot) {
-        if (currentModalRecipeId !== recipeId) return; // stale
+        if (currentModalRecipeId !== recipeId) return;
 
         commentsList.innerHTML = '';
         if (snapshot.empty) {
@@ -600,7 +703,6 @@
           return;
         }
 
-        // Sort client-side by createdAt (avoids composite index requirement)
         var docs = [];
         snapshot.forEach(function (doc) { docs.push({ id: doc.id, data: doc.data() }); });
         docs.sort(function (a, b) {
@@ -622,7 +724,6 @@
     var card = document.createElement('div');
     card.className = 'comment-card';
 
-    // Avatar
     var avatar = document.createElement('div');
     avatar.className = 'comment-avatar';
     if (data.userPhoto) {
@@ -631,7 +732,6 @@
       avatar.textContent = (data.userName || '?').charAt(0).toUpperCase();
     }
 
-    // Body
     var body = document.createElement('div');
     body.className = 'comment-body';
 
@@ -662,7 +762,6 @@
     card.appendChild(avatar);
     card.appendChild(body);
 
-    // Delete button (only for comment author)
     if (currentUser && data.userId === currentUser.uid) {
       var delBtn = document.createElement('button');
       delBtn.className = 'comment-delete';
@@ -673,7 +772,6 @@
           db.collection('comments').doc(docId).delete()
             .then(function () {
               card.remove();
-              // Check if list is now empty
               if (commentsList.children.length === 0) {
                 commentsList.innerHTML = '<p class="comments-empty">No comments yet. Be the first to share a tip!</p>';
               }
@@ -711,10 +809,8 @@
     .then(function (docRef) {
       commentInput.disabled = false;
       commentInput.focus();
-      // Remove "no comments" message if present
       var emptyMsg = commentsList.querySelector('.comments-empty');
       if (emptyMsg) emptyMsg.remove();
-      // Render the new comment immediately
       renderComment(docRef.id, {
         userId: currentUser.uid,
         userName: currentUser.displayName || 'Anonymous',
@@ -726,8 +822,91 @@
     .catch(function (err) {
       console.error('Error posting comment:', err);
       commentInput.disabled = false;
-      commentInput.value = text; // restore
+      commentInput.value = text;
     });
+  });
+
+  // ===== Add Recipe Modal =====
+  function openAddRecipeModal() {
+    addRecipeOverlay.classList.remove('hidden');
+    addRecipeForm.reset();
+    addRecipeStatus.textContent = '';
+    addRecipeStatus.className = 'add-recipe-status';
+    document.body.style.overflow = 'hidden';
+    document.getElementById('add-title').focus();
+  }
+
+  function closeAddRecipeModal() {
+    addRecipeOverlay.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  addRecipeCloseBtn.addEventListener('click', closeAddRecipeModal);
+
+  addRecipeOverlay.addEventListener('click', function (e) {
+    if (e.target === addRecipeOverlay) closeAddRecipeModal();
+  });
+
+  addRecipeForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!currentUser || !firebaseReady) return;
+
+    var title = document.getElementById('add-title').value.trim();
+    if (!title) return;
+
+    addRecipeSubmit.disabled = true;
+    addRecipeStatus.textContent = 'Adding recipe...';
+    addRecipeStatus.className = 'add-recipe-status';
+
+    var recipeData = {
+      title: title,
+      category: document.getElementById('add-category').value.trim(),
+      subcategory: document.getElementById('add-subcategory').value.trim(),
+      serves: document.getElementById('add-serves').value.trim(),
+      ingredients: document.getElementById('add-ingredients').value.trim(),
+      instructions: document.getElementById('add-instructions').value.trim(),
+      notes: document.getElementById('add-notes').value.trim(),
+      addedBy: currentUser.displayName || currentUser.email || 'Anonymous',
+      addedByUid: currentUser.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    db.collection('recipes').add(recipeData)
+      .then(function (docRef) {
+        // Add to local data
+        var localRecipe = {
+          id: 'user_' + docRef.id,
+          title: recipeData.title,
+          category: recipeData.category,
+          subcategory: recipeData.subcategory,
+          serves: recipeData.serves,
+          ingredients: recipeData.ingredients,
+          instructions: recipeData.instructions,
+          notes: recipeData.notes,
+          addedBy: recipeData.addedBy,
+          addedByUid: recipeData.addedByUid,
+          firestoreId: docRef.id
+        };
+        allRecipes.push(localRecipe);
+        recipesById[localRecipe.id] = localRecipe;
+        buildSearchIndex(); // rebuild Fuse index
+
+        addRecipeStatus.textContent = '✓ Recipe added!';
+        addRecipeStatus.className = 'add-recipe-status success';
+        addRecipeSubmit.disabled = false;
+
+        setTimeout(function () {
+          closeAddRecipeModal();
+          // Show the new recipe
+          openModal(localRecipe.id);
+        }, 1000);
+      })
+      .catch(function (err) {
+        console.error('Error adding recipe:', err);
+        addRecipeStatus.textContent = 'Error adding recipe: ' + (err.message || '');
+        addRecipeStatus.className = 'add-recipe-status error';
+        addRecipeSubmit.disabled = false;
+      });
   });
 
   // ===== Modal Close =====
@@ -747,45 +926,12 @@
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
-      closeModal();
+    if (e.key === 'Escape') {
+      if (!addRecipeOverlay.classList.contains('hidden')) {
+        closeAddRecipeModal();
+      } else if (!modalOverlay.classList.contains('hidden')) {
+        closeModal();
+      }
     }
   });
-
-  // ===== Init: Load recipes and build Fuse index =====
-  showLoading();
-  renderAuthBar();
-
-  fetch('/recipes.json')
-    .then(function (res) {
-      if (!res.ok) throw new Error('Failed to load recipes');
-      return res.json();
-    })
-    .then(function (data) {
-      allRecipes = data;
-
-      allRecipes.forEach(function (r) {
-        recipesById[r.id] = r;
-      });
-
-      fuse = new Fuse(allRecipes, {
-        keys: [
-          { name: 'title', weight: 5 },
-          { name: 'subcategory', weight: 1 }
-        ],
-        threshold: 0.35,
-        distance: 200,
-        includeScore: true,
-        minMatchCharLength: 2,
-        ignoreLocation: true,
-        useExtendedSearch: true
-      });
-
-      showRandomRecipes();
-    })
-    .catch(function (err) {
-      console.error('Failed to load recipes:', err);
-      hideLoading();
-      emptyState.classList.remove('hidden');
-    });
 })();
