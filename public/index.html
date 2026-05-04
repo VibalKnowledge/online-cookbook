@@ -12,6 +12,7 @@
 <body>
 
   <header class="header">
+    <div id="auth-bar" class="auth-bar hidden"></div>
     <div class="header-content">
       <h1 class="header-title">Joanne's Cookbook</h1>
       <p class="header-subtitle">~5,000 family recipes</p>
@@ -101,11 +102,40 @@
           <h3>Notes</h3>
           <p id="modal-notes" class="notes-text"></p>
         </div>
+
+        <!-- Private Notes (signed-in users only) -->
+        <div id="my-notes-section" class="my-notes-section hidden">
+          <h3>📝 My Notes <span class="note-private-badge">Private</span></h3>
+          <textarea id="my-notes-textarea" class="my-notes-textarea" placeholder="Add your personal notes..."></textarea>
+          <div class="my-notes-actions">
+            <span id="my-notes-status" class="my-notes-status"></span>
+            <button id="my-notes-save" class="my-notes-save">Save Notes</button>
+          </div>
+        </div>
+
+        <!-- Public Comments -->
+        <div id="comments-section" class="comments-section">
+          <h3>💬 Comments &amp; Changes</h3>
+          <div id="comments-list" class="comments-list"></div>
+          <div id="comment-form-wrap">
+            <div id="comment-sign-in-prompt" class="sign-in-prompt hidden">Sign in to leave a comment</div>
+            <form id="comment-form" class="comment-form hidden">
+              <input type="text" id="comment-input" class="comment-input" placeholder="Share a change you made or tip..." autocomplete="off">
+              <button type="submit" class="comment-submit">Post</button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script src="/fuse.min.js"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <script src="/app.js"></script>
 </body>
 </html>

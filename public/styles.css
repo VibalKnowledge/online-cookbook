@@ -484,6 +484,279 @@ body {
   line-height: 1.6;
 }
 
+/* ===== Auth Bar ===== */
+.auth-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.5rem;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.auth-bar .user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--white);
+  font-size: 0.85rem;
+}
+
+.auth-bar .user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+}
+
+.auth-bar .user-name {
+  font-weight: 600;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-btn {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+  border: 2px solid rgba(255,255,255,0.6);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--white);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.auth-btn:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--white);
+}
+
+/* ===== My Notes (Private) ===== */
+.my-notes-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #FFFDE7;
+  border: 1px solid #FFF9C4;
+  border-radius: var(--radius-sm);
+}
+
+.my-notes-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #F57F17;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.my-notes-section .note-private-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #FFF9C4;
+  color: #F57F17;
+}
+
+.my-notes-textarea {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.9rem;
+  width: 100%;
+  min-height: 70px;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #FFF9C4;
+  border-radius: var(--radius-sm);
+  outline: none;
+  resize: vertical;
+  background: var(--white);
+  transition: border-color var(--transition);
+}
+
+.my-notes-textarea:focus {
+  border-color: #F57F17;
+}
+
+.my-notes-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.my-notes-save {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: #F57F17;
+  color: var(--white);
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.my-notes-save:hover {
+  opacity: 0.85;
+}
+
+.my-notes-status {
+  font-size: 0.75rem;
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+/* ===== Comments (Public) ===== */
+.comments-section {
+  margin-bottom: 1.5rem;
+}
+
+.comments-section h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pink);
+  margin-bottom: 0.75rem;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.comment-card {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  background: var(--light-purple-accent);
+  border-radius: var(--radius-sm);
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 0.8rem;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.comment-author {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--purple);
+}
+
+.comment-date {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+.comment-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.comment-delete {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem;
+  transition: color var(--transition);
+  align-self: flex-start;
+}
+
+.comment-delete:hover {
+  color: #d32f2f;
+}
+
+.comments-empty {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.comment-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.comment-input {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.9rem;
+  flex: 1;
+  padding: 0.55rem 0.8rem;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: var(--white);
+  transition: border-color var(--transition);
+}
+
+.comment-input:focus {
+  border-color: var(--purple);
+}
+
+.comment-submit {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: var(--white);
+  cursor: pointer;
+  transition: opacity var(--transition);
+  white-space: nowrap;
+}
+
+.comment-submit:hover {
+  opacity: 0.9;
+}
+
+.sign-in-prompt {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
 /* ===== Utility ===== */
 .hidden {
   display: none !important;

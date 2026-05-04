@@ -1,6 +1,41 @@
 (function () {
   'use strict';
 
+  // ===== Firebase Config =====
+  // TODO: Replace with your Firebase project config
+  var firebaseConfig = {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+  };
+
+  // Initialize Firebase
+  var firebaseApp = null;
+  var db = null;
+  var auth = null;
+  var currentUser = null;
+
+  function initFirebase() {
+    if (!firebaseConfig.apiKey) {
+      console.warn('Firebase not configured — notes and comments disabled');
+      return false;
+    }
+    try {
+      firebaseApp = firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      auth = firebase.auth();
+      return true;
+    } catch (e) {
+      console.error('Firebase init error:', e);
+      return false;
+    }
+  }
+
+  var firebaseReady = initFirebase();
+
   // ===== DOM Elements =====
   var nameInput = document.getElementById('name-input');
   var cravingInput = document.getElementById('craving-input');
@@ -30,11 +65,73 @@
   var apiKeySave = document.getElementById('api-key-save');
   var apiKeyStatus = document.getElementById('api-key-status');
 
+  // Auth DOM
+  var authBar = document.getElementById('auth-bar');
+
+  // Notes DOM
+  var myNotesSection = document.getElementById('my-notes-section');
+  var myNotesTextarea = document.getElementById('my-notes-textarea');
+  var myNotesSave = document.getElementById('my-notes-save');
+  var myNotesStatus = document.getElementById('my-notes-status');
+
+  // Comments DOM
+  var commentsSection = document.getElementById('comments-section');
+  var commentsList = document.getElementById('comments-list');
+  var commentForm = document.getElementById('comment-form');
+  var commentInput = document.getElementById('comment-input');
+  var commentSignInPrompt = document.getElementById('comment-sign-in-prompt');
+
   var currentMode = 'name';
   var debounceTimer = null;
   var allRecipes = [];
   var recipesById = {};
   var fuse = null;
+  var currentModalRecipeId = null;
+  var notesSaveTimer = null;
+
+  // ===== Auth =====
+  function renderAuthBar() {
+    if (!firebaseReady) {
+      authBar.classList.add('hidden');
+      return;
+    }
+    authBar.classList.remove('hidden');
+    if (currentUser) {
+      var photoHTML = currentUser.photoURL
+        ? '<img class="user-avatar" src="' + currentUser.photoURL + '" alt="">'
+        : '';
+      var displayName = currentUser.displayName || currentUser.email || 'User';
+      authBar.innerHTML =
+        '<div class="user-info">' +
+          photoHTML +
+          '<span class="user-name">' + displayName + '</span>' +
+        '</div>' +
+        '<button class="auth-btn" id="sign-out-btn">Sign Out</button>';
+      document.getElementById('sign-out-btn').addEventListener('click', function () {
+        auth.signOut();
+      });
+    } else {
+      authBar.innerHTML =
+        '<button class="auth-btn" id="sign-in-btn">Sign in with Google</button>';
+      document.getElementById('sign-in-btn').addEventListener('click', function () {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(function (err) {
+          console.error('Sign-in error:', err);
+        });
+      });
+    }
+  }
+
+  if (firebaseReady) {
+    auth.onAuthStateChanged(function (user) {
+      currentUser = user;
+      renderAuthBar();
+      // Refresh modal if open
+      if (currentModalRecipeId !== null && !modalOverlay.classList.contains('hidden')) {
+        loadNotesAndComments(currentModalRecipeId);
+      }
+    });
+  }
 
   // ===== API Key Management =====
   function getApiKey() {
@@ -208,9 +305,6 @@
 
     var words = query.trim().split(/\s+/).filter(function (w) { return w.length > 0; });
 
-    // Strategy: use Fuse.js AND search for words with 2+ chars,
-    // then post-filter with prefix matching for short words (1 char).
-    // This handles partial typing like "john d" → "john" (fuzzy) + "d" (prefix filter).
     var fuzzyWords = words.filter(function (w) { return w.length >= 2; });
     var prefixWords = words.filter(function (w) { return w.length < 2; });
 
@@ -226,8 +320,6 @@
     var results = fuse.search(searchExpr, { limit: 80 });
     var recipes = results.map(function (r) { return r.item; });
 
-    // Post-filter: for single-char words, require them as a word-start prefix
-    // e.g. "d" matches "DESTEPHANO" or "DELICIOUS" but not "BREAD"
     if (prefixWords.length > 0 && recipes.length > 0) {
       recipes = recipes.filter(function (r) {
         var titleWords = r.title.toLowerCase().replace(/['']/g, ' ').split(/\s+/);
@@ -249,7 +341,6 @@
     if (!query.trim()) return;
     showLoading();
 
-    // Step 1: Get top 80 Fuse.js keyword matches
     var keywords = query.trim().split(/\s+/).join(' ');
     var fuseResults = fuse.search(keywords, { limit: 80 });
     var candidateRecipes = fuseResults.map(function (r) { return r.item; });
@@ -261,21 +352,18 @@
 
     var apiKey = getApiKey();
 
-    // Step 2: If no API key, show Fuse.js results with a note
     if (!apiKey) {
       renderCards(candidateRecipes.slice(0, 24), 'Recipes for your craving');
       var note = document.createElement('p');
       note.className = 'craving-note';
       note.textContent = 'Tip: Set a Gemini API key for smarter craving-based results.';
       resultsGrid.parentNode.insertBefore(note, resultsGrid);
-      // Remove note on next search
       setTimeout(function () {
         if (note.parentNode) note.parentNode.removeChild(note);
       }, 15000);
       return;
     }
 
-    // Step 3: Send to Gemini for ranking
     try {
       var recipeSummaries = candidateRecipes.map(function (r) {
         return { id: r.id, title: r.title, category: r.category || '', subcategory: r.subcategory || '' };
@@ -301,7 +389,6 @@
 
       var data = await response.json();
       var text = data.candidates[0].content.parts[0].text;
-      // Extract JSON array from response (may have markdown fences)
       var jsonMatch = text.match(/\[[\s\S]*?\]/);
       if (!jsonMatch) throw new Error('No JSON array in response');
 
@@ -315,12 +402,10 @@
       if (rankedRecipes.length > 0) {
         renderCards(rankedRecipes, 'Recipes for your craving');
       } else {
-        // Fallback to Fuse.js results
         renderCards(candidateRecipes.slice(0, 24), 'Recipes for your craving');
       }
     } catch (err) {
       console.error('Gemini API error:', err);
-      // Fallback to Fuse.js results
       renderCards(candidateRecipes.slice(0, 24), 'Recipes for your craving');
     }
   }
@@ -350,12 +435,14 @@
     var recipe = recipesById[id];
     if (!recipe) return;
 
+    currentModalRecipeId = id;
     modalOverlay.classList.remove('hidden');
     modalLoading.classList.add('hidden');
     modalContent.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 
     populateModal(recipe);
+    loadNotesAndComments(id);
   }
 
   function populateModal(recipe) {
@@ -380,7 +467,6 @@
     ingredients.forEach(function (item) {
       var li = document.createElement('li');
       var text = typeof item === 'string' ? item.trim() : String(item);
-      // Strip leading dashes/bullets
       text = text.replace(/^[-•·]\s*/, '');
       li.textContent = text;
       modalIngredients.appendChild(li);
@@ -398,7 +484,7 @@
       modalInstructions.appendChild(p);
     });
 
-    // Notes
+    // Notes (from recipe data)
     if (recipe.notes && recipe.notes.trim()) {
       modalNotes.textContent = recipe.notes;
       modalNotesSection.classList.remove('hidden');
@@ -407,9 +493,243 @@
     }
   }
 
+  // ===== Private Notes (Firestore) =====
+  function loadNotesAndComments(recipeId) {
+    // Reset UI
+    myNotesTextarea.value = '';
+    myNotesStatus.textContent = '';
+    commentsList.innerHTML = '';
+
+    if (!firebaseReady) {
+      myNotesSection.classList.add('hidden');
+      commentForm.classList.add('hidden');
+      commentSignInPrompt.classList.add('hidden');
+      return;
+    }
+
+    // Private notes — only if signed in
+    if (currentUser) {
+      myNotesSection.classList.remove('hidden');
+      commentForm.classList.remove('hidden');
+      commentSignInPrompt.classList.add('hidden');
+
+      // Load user's private note
+      db.collection('notes')
+        .doc(currentUser.uid + '_' + recipeId)
+        .get()
+        .then(function (doc) {
+          if (doc.exists && currentModalRecipeId === recipeId) {
+            myNotesTextarea.value = doc.data().text || '';
+          }
+        })
+        .catch(function (err) {
+          console.error('Error loading note:', err);
+        });
+    } else {
+      myNotesSection.classList.add('hidden');
+      commentForm.classList.add('hidden');
+      commentSignInPrompt.classList.remove('hidden');
+    }
+
+    // Load public comments
+    loadComments(recipeId);
+  }
+
+  // Save private note
+  myNotesSave.addEventListener('click', function () {
+    if (!currentUser || !currentModalRecipeId || !firebaseReady) return;
+
+    var text = myNotesTextarea.value.trim();
+    var docId = currentUser.uid + '_' + currentModalRecipeId;
+
+    myNotesStatus.textContent = 'Saving...';
+
+    if (!text) {
+      // Delete empty note
+      db.collection('notes').doc(docId).delete()
+        .then(function () {
+          myNotesStatus.textContent = '✓ Cleared';
+          setTimeout(function () { myNotesStatus.textContent = ''; }, 2000);
+        })
+        .catch(function (err) {
+          console.error('Error deleting note:', err);
+          myNotesStatus.textContent = 'Error saving';
+        });
+    } else {
+      db.collection('notes').doc(docId).set({
+        userId: currentUser.uid,
+        recipeId: currentModalRecipeId,
+        text: text,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      })
+      .then(function () {
+        myNotesStatus.textContent = '✓ Saved';
+        setTimeout(function () { myNotesStatus.textContent = ''; }, 2000);
+      })
+      .catch(function (err) {
+        console.error('Error saving note:', err);
+        myNotesStatus.textContent = 'Error saving';
+      });
+    }
+  });
+
+  // Auto-save on typing (debounced)
+  myNotesTextarea.addEventListener('input', function () {
+    clearTimeout(notesSaveTimer);
+    myNotesStatus.textContent = '';
+    notesSaveTimer = setTimeout(function () {
+      myNotesSave.click();
+    }, 1500);
+  });
+
+  // ===== Public Comments (Firestore) =====
+  function loadComments(recipeId) {
+    if (!firebaseReady) return;
+
+    commentsList.innerHTML = '<p class="comments-empty">Loading comments...</p>';
+
+    db.collection('comments')
+      .where('recipeId', '==', recipeId)
+      .orderBy('createdAt', 'asc')
+      .get()
+      .then(function (snapshot) {
+        if (currentModalRecipeId !== recipeId) return; // stale
+
+        commentsList.innerHTML = '';
+        if (snapshot.empty) {
+          commentsList.innerHTML = '<p class="comments-empty">No comments yet. Be the first to share a tip!</p>';
+          return;
+        }
+
+        snapshot.forEach(function (doc) {
+          var data = doc.data();
+          renderComment(doc.id, data);
+        });
+      })
+      .catch(function (err) {
+        console.error('Error loading comments:', err);
+        commentsList.innerHTML = '<p class="comments-empty">Could not load comments.</p>';
+      });
+  }
+
+  function renderComment(docId, data) {
+    var card = document.createElement('div');
+    card.className = 'comment-card';
+
+    // Avatar
+    var avatar = document.createElement('div');
+    avatar.className = 'comment-avatar';
+    if (data.userPhoto) {
+      avatar.innerHTML = '<img src="' + data.userPhoto + '" alt="">';
+    } else {
+      avatar.textContent = (data.userName || '?').charAt(0).toUpperCase();
+    }
+
+    // Body
+    var body = document.createElement('div');
+    body.className = 'comment-body';
+
+    var header = document.createElement('div');
+    header.className = 'comment-header';
+
+    var authorSpan = document.createElement('span');
+    authorSpan.className = 'comment-author';
+    authorSpan.textContent = data.userName || 'Anonymous';
+
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'comment-date';
+    if (data.createdAt) {
+      var d = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+      dateSpan.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    header.appendChild(authorSpan);
+    header.appendChild(dateSpan);
+
+    var textP = document.createElement('p');
+    textP.className = 'comment-text';
+    textP.textContent = data.text;
+
+    body.appendChild(header);
+    body.appendChild(textP);
+
+    card.appendChild(avatar);
+    card.appendChild(body);
+
+    // Delete button (only for comment author)
+    if (currentUser && data.userId === currentUser.uid) {
+      var delBtn = document.createElement('button');
+      delBtn.className = 'comment-delete';
+      delBtn.textContent = '✕';
+      delBtn.title = 'Delete comment';
+      delBtn.addEventListener('click', function () {
+        if (confirm('Delete this comment?')) {
+          db.collection('comments').doc(docId).delete()
+            .then(function () {
+              card.remove();
+              // Check if list is now empty
+              if (commentsList.children.length === 0) {
+                commentsList.innerHTML = '<p class="comments-empty">No comments yet. Be the first to share a tip!</p>';
+              }
+            })
+            .catch(function (err) {
+              console.error('Error deleting comment:', err);
+            });
+        }
+      });
+      card.appendChild(delBtn);
+    }
+
+    commentsList.appendChild(card);
+  }
+
+  // Post comment
+  commentForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!currentUser || !currentModalRecipeId || !firebaseReady) return;
+
+    var text = commentInput.value.trim();
+    if (!text) return;
+
+    commentInput.value = '';
+    commentInput.disabled = true;
+
+    db.collection('comments').add({
+      recipeId: currentModalRecipeId,
+      userId: currentUser.uid,
+      userName: currentUser.displayName || 'Anonymous',
+      userPhoto: currentUser.photoURL || '',
+      text: text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(function (docRef) {
+      commentInput.disabled = false;
+      commentInput.focus();
+      // Remove "no comments" message if present
+      var emptyMsg = commentsList.querySelector('.comments-empty');
+      if (emptyMsg) emptyMsg.remove();
+      // Render the new comment immediately
+      renderComment(docRef.id, {
+        userId: currentUser.uid,
+        userName: currentUser.displayName || 'Anonymous',
+        userPhoto: currentUser.photoURL || '',
+        text: text,
+        createdAt: new Date()
+      });
+    })
+    .catch(function (err) {
+      console.error('Error posting comment:', err);
+      commentInput.disabled = false;
+      commentInput.value = text; // restore
+    });
+  });
+
+  // ===== Modal Close =====
   function closeModal() {
     modalOverlay.classList.add('hidden');
     document.body.style.overflow = '';
+    currentModalRecipeId = null;
+    clearTimeout(notesSaveTimer);
   }
 
   modalClose.addEventListener('click', closeModal);
@@ -428,6 +748,8 @@
 
   // ===== Init: Load recipes and build Fuse index =====
   showLoading();
+  renderAuthBar();
+
   fetch('/recipes.json')
     .then(function (res) {
       if (!res.ok) throw new Error('Failed to load recipes');
@@ -436,12 +758,10 @@
     .then(function (data) {
       allRecipes = data;
 
-      // Build lookup map
       allRecipes.forEach(function (r) {
         recipesById[r.id] = r;
       });
 
-      // Build Fuse.js search index
       fuse = new Fuse(allRecipes, {
         keys: [
           { name: 'title', weight: 5 },
@@ -455,7 +775,6 @@
         useExtendedSearch: true
       });
 
-      // Show 12 random recipes
       showRandomRecipes();
     })
     .catch(function (err) {
