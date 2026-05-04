@@ -4,12 +4,12 @@
   // ===== Firebase Config =====
   // TODO: Replace with your Firebase project config
   var firebaseConfig = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyAssNdy6WYV3MTscTeojOpepureKbgRfrg",
+    authDomain: "family-cookbook-78dee.firebaseapp.com",
+    projectId: "family-cookbook-78dee",
+    storageBucket: "family-cookbook-78dee.firebasestorage.app",
+    messagingSenderId: "268350824549",
+    appId: "1:268350824549:web:0532055065abe036de268c"
   };
 
   // Initialize Firebase
