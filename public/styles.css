@@ -845,7 +845,8 @@ body {
 }
 
 .add-recipe-form input[type="text"],
-.add-recipe-form textarea {
+.add-recipe-form textarea,
+.add-recipe-form select {
   font-family: 'Open Sans', sans-serif;
   font-size: 0.95rem;
   padding: 0.6rem 0.8rem;
@@ -858,7 +859,8 @@ body {
 }
 
 .add-recipe-form input[type="text"]:focus,
-.add-recipe-form textarea:focus {
+.add-recipe-form textarea:focus,
+.add-recipe-form select:focus {
   border-color: var(--purple);
 }
 

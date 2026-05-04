@@ -84,6 +84,11 @@
   var addRecipeForm = document.getElementById('add-recipe-form');
   var addRecipeStatus = document.getElementById('add-recipe-status');
   var addRecipeSubmit = document.getElementById('add-recipe-submit');
+  var addCategorySelect = document.getElementById('add-category');
+  var addSubcategorySelect = document.getElementById('add-subcategory');
+
+  // ===== Category → Subcategory Map =====
+  var CATEGORY_MAP = {"Appetizers & Hors d_oeuvres":["Bread Dipping Sauce & Garlic Bread","Bruschetta, Crustini & Pizzettes Etc_","CHEESE DIPS","CHEESEBALLS, BRIE &CHEESE TORTESdoc","Cream Cheese Spreads","DIPS & SPREADS etc_","DIPS AND SPREADS, Seafood_","DIPS Mexican &Cheese Spreads","DIPS, Mango Curry Dips & Spreads","DIPS, Middle Eastern Dips & Spreads","DIPS, Mushroom Dips & Spreads","DIPS, Spinach Dips & Spreads","DIPS, Sweet Dips Spreads & Dessert Cheeseballs","FINGER FOOD AND BITE SIZE PIECES","FRITTERS, BEIGNETS & FRIED FOOD","JALAPENO POPPERS","Meat, Poultry & Fish","NUTS, SEEDS & POPCORN","Pastry_ Crackers, Turnovers, Wontons etc_","SAVORY CHEESECAKES","SHELLFISH & FISH","STUFFED MUSHROOMS"],"Breads, Quick Breads & Muffins":["BISCUITS","Batters","CINNAMON ROLLS AND STICKY BUNS_","CORN BREAD","CREPES & PANCAKES_","CROUTONS AND STUFFINGS","DOUGHNUTS,  BEIGNETS,  ZEPPOLES ETC_","DUMPLINGS AND MATZO BALLS","FRENCH TOAST","MUFFINS","POPOVERS","PUMPKIN BREAD","SCONES","Soda Bread & Steamed Bread","Sweet Quick Breads","TORTILLAS","WAFFLES","YEAST BREADS","YEAST ROLLS","Yeast Based Pastries & Cakes"],"Cakes, Cupcakes Brownies & Bars":["BARS Blondies, Brownies, Oat etc","BARS, Fruit Squares & Bars","BUNDT CAKES","CARROT & VEGTABLE CAKES","CHOCOLATE CAKES","CHOCOLATE FROSTINGS AND GLAZES","COCONUT CAKES","COFFEE CAKES","COOKIE CAKES","CUPCAKES","Cake Fillings and Simple Syrups","FONDANT","FROSTINGS, FILLINGS, TOPPINGS","FRUIT & CAKES","LAVA CAKES","LEMON and LIME CAKES","NUT CAKES","ORANGE CAKES","POUND CAKES","PUMPKIN CAKES AND ROLLS","RUM OR LIQUEUR CAKES","SPICE CAKES & GINGERBREAD","STRAWBERRY CAKES","UPSIDEDOWN CAKES","VANILLA, MAPLE.,CARAMELdoc","WOOPIE PIES"],"Candy":["ASSORTED CANDIES","BRITTLES AND PRALINES","CANDY APPLES","CARAMELS","FUDGE"],"Cookies":["Bar Biscotti Lemon Palmiers & Misc. Cookies","CHOCOLATE CHIP COOKIES","CHOCOLATE COOKIES","GINGER COOKIES","LADYFINGERS MADELINES ETC","Macaroons, Macarons & Meringues","NUT COOKIES","OATMEAL COOKIES","PIZZELLES","REFRIGERATOR COOKIES","SANDWICH COOKIES","SHORTBREAD & BUTTER COOKIES","SUGAR COOKIES"],"Dessert Fondues and Sweet Sauces":["CARAMEL TYPE  SAUCES","CHOCOLATE DESSERT SAUCES","DESSERT FONDUES","GENERAL DESSERT & FRUIT SAUCES & SYRUPS"],"Drinks":["BLOODY MARY\u2019S","COOKBOOK - DRINKS","HOMEMADE LIQUOR","Hot Spiked Punches, Wine Coffee etc._","NON ALCOHOLIC DRINKS","PUNCHES AND DRINKS FOR A CROWD","SANGRIA","SINGLE DRINKS & JELL-O SHOTS"],"Eggs & Cheese":["Baked & Slowcook Eggs,Casseroles &  Souffles","CHEESE FONDUE","HOME MADE CHEESE","Omelets & Frittatas, Fried & Scrambled","POACHED, BOILED AND DEVILEDEGGS","QUICHE OR EGGS AND CHEESE PIE"],"Fish & Seafood":["CRABS AND LOBSTER.DOC","MISC.& MIXED FISH & SHELLFISH","SHRIMP","SNAPPER & TILAPIA","SWORDFISH"],"Grains, Rice,Cereal etc.":["Bulger, Grits & Polenta","COUSCOUS & QUINOA","Granolas and Cereals","RICE AND POLENTA (GRITS)"],"Icecreams, Sherberts & Sorbets":["ICE CREAM COOKIES AND BARS ETC","ICECREAM CAKES, PIES & BOMBS","ICECREAM SUNDAES","ICECREAM, SORBET ETC"],"Jams Jellies Vinegars & Pickles":["JAMS AND JELLIES","RELISHES & CHUTNEYS","VINEGARS","Vegetable Pickles, Relishes etc"],"Meat":["BEEF & PORK CASSEROLES","Braised Beef, Briskets, Pot Roasts, Stews etc_","CHILI & GOULASH","JAMBALAYA","LAMB","MEAT PIES","MEATBALLS","MEATLOAFS AND TOPPINGS","PORK","PRIME RIB","SAUSAGES","SLOW COOKER BEEF","SLOW COOKER PORK","STIR FRIES AND FONDUES","Sauteed, Grilled Beef & Veal"],"Misc. Desserts":["BREAD PUDDINGS","CHEESECAKES","CHOUX PASTRY","FRUIT DESSERTS & FRITTERS.DOC","PUDDING, MOUSSES, BRULEES AND FLANS","SOUFFLES & PUDDINGCAKES","TIRAMISU","TRIFLES"],"Pasta & Pasta Sauces":["CHEESE & VEGGIE PASTA","HOMEMADE PASTA","LASAGNA & PASTITSIO","PASTA SAUCES","PASTA WITH CHICKEN","PASTA WITH MEAT","SHRIMP AND PASTA","STUFFED PASTA","TORTELLINI & RAVIOLI & CHINESE DUMPLINGS"],"Pastry, Pies & Tarts":["APPLE PIES, CRISPS, PUFFS ETC_","CHOCOLATE PIES","COCONUT PIES","CRISPS AND COBBLERS","CUSTARDS & CREAM PIES","FRUIT & VEGETABLE PIES","MISC","NUT PIES","PASTRY","STRUDELS, NAPOLEONS AND OTHER LAYERED PASTRY","TARTS"],"Pizza & Fixins":["Calzones & Pizza Rustica Pies","DEEP DISH PIZZAS","PIZZA DOUGH","PIZZA SAUCES","THIN CRUST  PIZZAS"],"Poultry":["CASSEROLES & STEWS","CHICKEN_ Grilled, Sauteed, Baked","FRIED AND OVEN FRIED CHICKEN","GRILLED AND BARBECUED CHICKEN","MEXICAN CHICKEN RECIPES","Roast Turkey, Chicken and Brines","SLOW COOKER","STIR FRY CHICKEN","TURKEY"],"SALADS & SALSAS":["(mostly) FRUIT SALADS","ASIAN AND FUSION SALADS","BEAN SALADS","COLESLAW","GELATIN SALADS (& DESSERTS)","MOSTLY GREEN & SPINACH SALADS","PASTA, RICE, BULGAR ETC._","POTATO & CUCUMBER SALADS","POULTRY & BEEF SALADS","SALSAS","VEGETABLE SALADS"],"Salad dressings":["AVOCADO DRESSINGS","BLUE CHEESE AND GORGONZOLA DRESSING","Buttermilk, Mayonnaise dressing","CAESAR DRESSINGS","COLESLAW DRESSINGS","GENERAL VINAGRETTES AND OIL BASED SALAD DRESSING","GREEK, MIDDLEEASTERN & INDIAN DRESSINGS","ORIENTAL TYPE DRESSING"],"Sandwiches & Hamburgers":["CHICKEN & TURKEY BURGERS","HAMBURGERS AND HOTDOGS","Ham, Cheese and Ham & Cheese Sandwiches","SANDWICH NOTES & MISC. FILLING","SANDWICHES","SLOPPY MEAT SANDWICHES"],"Sauces, Seasonings & Rubs":["ASIAN SAUCES","Butter, Compound (flavored) Butters & Ghee","COCKTAIL SAUCES For Shrimp etc","DREDGES, HERB AND SPICE MIXES","Fruit Sauces, Chutneys & Compotes","GRAVYS AND OTHER MEAT & VEGGIE SAUCES","HOLLANDAISE  & BERNAISE SAUCES","HORSERADISH CREAM SAUCES","KETCHUPS, FRY & CHILI SAUCES","MAYONNAISE, AIOLI AND BURGERS SAUCES","MUSTARD SAUCES","Marinades, Pesto & Flavored Oils","Mexican Sauces (white, green etc)","RUBS for Beef, Poultry & Fish","Specialty Sauces, Pepper,  Burger, Garlic","WHITE SAUCES"],"Soups & Stews":["CHICKEN & TURKEY SOUPS & GUMBOS","CHILLED SOUPS","CREAM SOUPS","FISH, SEAFOOD & CHOWDERS","HOT VEGETABLE & FRUIT SOUP","MEAT BASED SOUPS AND STEWS","ONION SOUP","PUMPKIN SOUPS"],"Tofu":["TOFU"],"Vegetables":["ASPARAGUS & BEETS","BEANS","BEANS, DRIED","BROCCOLI","BRUSSELS SPROUTS","CABBAGE","CARROTS,FENNEL & PARSNIPS","CAULIFLOWER","CORN","CUCUMBERS","EGGPLANT","GARLIC, LEEKS & ONIONS","MIXED VEGIES","MUSHROOMS","OKRA","PEPPERS","POTATOES","SPINACH","SQUASH AND ZUCCHINI","SWEET POTATOES","SWISS CHARD & FENNEL","TOMATOES"]};
 
   var currentMode = 'name';
   var debounceTimer = null;
@@ -827,11 +832,43 @@
   });
 
   // ===== Add Recipe Modal =====
+  // ===== Populate Category Dropdowns =====
+  function populateCategoryDropdown() {
+    var cats = Object.keys(CATEGORY_MAP).sort();
+    addCategorySelect.innerHTML = '<option value="">Select a category...</option>';
+    cats.forEach(function (cat) {
+      var opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      addCategorySelect.appendChild(opt);
+    });
+    // Reset subcategory
+    addSubcategorySelect.innerHTML = '<option value="">Select a subcategory...</option>';
+  }
+
+  addCategorySelect.addEventListener('change', function () {
+    var cat = addCategorySelect.value;
+    addSubcategorySelect.innerHTML = '<option value="">Select a subcategory...</option>';
+    if (cat && CATEGORY_MAP[cat]) {
+      CATEGORY_MAP[cat].forEach(function (sub) {
+        var opt = document.createElement('option');
+        opt.value = sub;
+        opt.textContent = sub;
+        addSubcategorySelect.appendChild(opt);
+      });
+    }
+  });
+
+  // Initialize dropdowns
+  populateCategoryDropdown();
+
   function openAddRecipeModal() {
     addRecipeOverlay.classList.remove('hidden');
     addRecipeForm.reset();
     addRecipeStatus.textContent = '';
     addRecipeStatus.className = 'add-recipe-status';
+    // Reset subcategory options since form.reset() clears category selection
+    addSubcategorySelect.innerHTML = '<option value="">Select a subcategory...</option>';
     document.body.style.overflow = 'hidden';
     document.getElementById('add-title').focus();
   }
