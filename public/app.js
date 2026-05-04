@@ -590,7 +590,6 @@
 
     db.collection('comments')
       .where('recipeId', '==', recipeId)
-      .orderBy('createdAt', 'asc')
       .get()
       .then(function (snapshot) {
         if (currentModalRecipeId !== recipeId) return; // stale
@@ -601,9 +600,16 @@
           return;
         }
 
-        snapshot.forEach(function (doc) {
-          var data = doc.data();
-          renderComment(doc.id, data);
+        // Sort client-side by createdAt (avoids composite index requirement)
+        var docs = [];
+        snapshot.forEach(function (doc) { docs.push({ id: doc.id, data: doc.data() }); });
+        docs.sort(function (a, b) {
+          var ta = a.data.createdAt ? (a.data.createdAt.toMillis ? a.data.createdAt.toMillis() : 0) : 0;
+          var tb = b.data.createdAt ? (b.data.createdAt.toMillis ? b.data.createdAt.toMillis() : 0) : 0;
+          return ta - tb;
+        });
+        docs.forEach(function (d) {
+          renderComment(d.id, d.data);
         });
       })
       .catch(function (err) {
