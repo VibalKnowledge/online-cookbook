@@ -236,7 +236,8 @@ def is_recipe_title(para) -> bool:
     # Word Heading styles inherit bold/underline from the style definition,
     # but run.bold returns None ("inherited") rather than True.
     # Check for Heading styles with short, title-like text.
-    if is_heading and len(cleaned) >= 4 and len(cleaned) <= 80:
+    # Reject ingredient lines (start with - or •) that happen to have heading style
+    if is_heading and len(cleaned) >= 4 and len(cleaned) <= 80 and not cleaned.startswith('-') and not cleaned.startswith('•'):
         # Reject generic section labels
         lower_h = cleaned.lower().rstrip(':')
         heading_skip = {

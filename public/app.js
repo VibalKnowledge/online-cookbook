@@ -614,7 +614,7 @@
       })
       .catch(function (err) {
         console.error('Error loading comments:', err);
-        commentsList.innerHTML = '<p class="comments-empty">Could not load comments.</p>';
+        commentsList.innerHTML = '<p class="comments-empty">Could not load comments. ' + (err.code || err.message || '') + '</p>';
       });
   }
 
