@@ -1,5 +1,0 @@
-python-docx
-fastapi
-uvicorn
-google-generativeai
-python-dotenv
