@@ -206,20 +206,41 @@
     }
     if (!fuse) return;
 
-    // Tokenize query: each word becomes a fuzzy match requirement
-    // In Fuse.js extended search, { $and: [{title: "word"}, ...] }
-    // means every word must fuzzy-match somewhere in the title
     var words = query.trim().split(/\s+/).filter(function (w) { return w.length > 0; });
+
+    // Strategy: use Fuse.js AND search for words with 2+ chars,
+    // then post-filter with prefix matching for short words (1 char).
+    // This handles partial typing like "john d" → "john" (fuzzy) + "d" (prefix filter).
+    var fuzzyWords = words.filter(function (w) { return w.length >= 2; });
+    var prefixWords = words.filter(function (w) { return w.length < 2; });
+
     var searchExpr;
-    if (words.length === 1) {
-      searchExpr = words[0];
+    if (fuzzyWords.length === 0) {
+      searchExpr = query.trim();
+    } else if (fuzzyWords.length === 1) {
+      searchExpr = fuzzyWords[0];
     } else {
-      // Build AND query: each word must match in title (or subcategory)
-      searchExpr = { $and: words.map(function (w) { return { title: w }; }) };
+      searchExpr = { $and: fuzzyWords.map(function (w) { return { title: w }; }) };
     }
 
-    var results = fuse.search(searchExpr, { limit: 30 });
+    var results = fuse.search(searchExpr, { limit: 80 });
     var recipes = results.map(function (r) { return r.item; });
+
+    // Post-filter: for single-char words, require them as a word-start prefix
+    // e.g. "d" matches "DESTEPHANO" or "DELICIOUS" but not "BREAD"
+    if (prefixWords.length > 0 && recipes.length > 0) {
+      recipes = recipes.filter(function (r) {
+        var titleWords = r.title.toLowerCase().replace(/['']/g, ' ').split(/\s+/);
+        return prefixWords.every(function (pw) {
+          var pl = pw.toLowerCase();
+          return titleWords.some(function (tw) {
+            return tw.indexOf(pl) === 0;
+          });
+        });
+      });
+    }
+
+    recipes = recipes.slice(0, 30);
     renderCards(recipes, 'Results for "' + query.trim() + '"');
   }
 
