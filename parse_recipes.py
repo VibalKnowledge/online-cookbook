@@ -121,48 +121,132 @@ def iter_body_elements(doc):
 # Paragraph classification helpers
 # ---------------------------------------------------------------------------
 
-def is_recipe_title(para) -> bool:
-    """A recipe title is detected by:
-    1. Text contains trailing underscores (___) — the consistent visual separator
-    2. At least one run is underlined
-    3. The actual text (without underscores) is not empty
-    4. Not a large-font section header
+def _is_large_font(run) -> bool:
+    """Check if a run uses a large font (section header size)."""
+    return bool(run.font.size and run.font.size >= SECTION_HEADER_SIZE_THRESHOLD)
 
-    This catches:
-    - Bold + Underline titles (most common)
-    - Heading-style titles that are underlined but not explicitly bold
-    - Mixed formatting where some runs are bold and others underlined
+
+def is_recipe_title(para) -> bool:
+    """A recipe title is detected by ANY of these patterns:
+
+    Pattern A: Text contains '___' (with non-empty cleaned text)
+               — the most reliable marker, regardless of bold/underline
+    Pattern B: Any run is both bold AND underlined (without '___')
+               — catches titles where author forgot trailing underscores
+
+    Excludes:
+      - Empty / whitespace-only paragraphs
+      - Large-font section headers (>=15pt bold, no underscores)
+      - Very long text (>120 chars after stripping underscores) — likely not a title
     """
     text = para.text.strip()
     if not text:
         return False
 
-    # Must have trailing underscores — the universal recipe title marker
-    if "___" not in text:
-        return False
-
-    # The actual title (without underscores) must not be empty
     cleaned = text.rstrip("_").strip()
     if not cleaned:
+        return False
+
+    # Reject very long lines — recipe titles are short
+    if len(cleaned) > 120:
         return False
 
     runs_with_text = [r for r in para.runs if r.text.strip().rstrip("_").strip()]
     if not runs_with_text:
         return False
 
-    # At least one run must be underlined
-    has_underline = any(r.underline for r in para.runs if r.text.strip())
-    if not has_underline:
-        return False
+    has_underscores = "___" in text
+    has_any_underline = any(r.underline for r in para.runs if r.text.strip())
+    has_any_bold = any(r.bold for r in para.runs if r.text.strip())
+    has_bold_underline = any(
+        r.bold and r.underline for r in para.runs if r.text.strip().rstrip("_").strip()
+    )
+    is_heading = para.style.name.lower().startswith("heading")
 
-    # Reject section headers: very large font without underscores in text
-    for run in runs_with_text:
-        if run.font.size and run.font.size >= SECTION_HEADER_SIZE_THRESHOLD:
-            # Large font — only accept if it has underscores (it's a title, not a header)
-            if "___" not in run.text:
+    # Reject large-font section headers (bold, big, no underscores)
+    if not has_underscores:
+        for run in runs_with_text:
+            if _is_large_font(run):
                 return False
 
-    return True
+    # Pattern A: Has '___' — accept regardless of bold/underline
+    # This catches all formatting variants: bold+UL, UL-only, heading-style,
+    # and even runs where underline was lost
+    if has_underscores:
+        # Still reject large-font section headers that happen to have ___
+        for run in runs_with_text:
+            if _is_large_font(run) and "___" not in run.text:
+                return False
+        return True
+
+    # Pattern B: Bold + Underline without '___'
+    # Author forgot underscores but formatted correctly
+    if has_bold_underline:
+        return True
+
+    # Pattern C: Bold-only (no underline, no ___)
+    # Only if ALL runs are bold AND text looks like a recipe title
+    # (not a section label, not a sub-component header)
+    if has_any_bold and all(r.bold for r in runs_with_text):
+        # Reject section labels that end with ':' and are short
+        if text.endswith(':') and len(cleaned) < 30:
+            return False
+        # Reject known sub-component / section patterns
+        lower = cleaned.lower().rstrip(':')
+        # Prefix patterns — reject if title starts with these
+        skip_prefixes = [
+            'for the', 'ideas for',
+            'cont:', 'continued', 'step ', 'see ', 'also ',
+            'base recipe',
+        ]
+        # Exact-match patterns — reject only if title IS this word
+        skip_exact = {
+            'crust', 'filling', 'topping', 'frosting', 'glaze', 'icing',
+            'garnish', 'assembly', 'batter', 'marinade', 'coating', 'broth',
+            'custard', 'whipped cream', 'additions', 'changes',
+            'directions', 'method', 'preparation',
+            'notes', 'variations', 'tips', 'serving',
+            'optional', 'possible', 'other',
+            'ingredients', 'instructions', 'cooking',
+            'sauce', 'meat', 'cheese', 'lobster', 'ciders', 'salsa',
+            'cakes', 'plum', 'fillings',
+        }
+        if lower in skip_exact:
+            return False
+        if any(lower.startswith(p) for p in skip_prefixes):
+            return False
+        # Reject very short generic words (but keep things like GHEE)
+        if len(cleaned) < 4:
+            return False
+        # Reject numbered section headers like '1.CHEESE', '2. FILLINGS'
+        if re.match(r'^\d+\.\s*', cleaned):
+            return False
+        # Reject category/TOC-style headers (parenthetical descriptions)
+        if cleaned.startswith('(') and cleaned.endswith(')'):
+            return False
+        # Accept: this is likely a bold recipe title
+        return True
+
+    # Pattern D: Underline-only (no bold, no ___)
+    # Some recipes have underlined titles without bold formatting
+    if has_any_underline and not has_any_bold and len(cleaned) >= 4 and len(cleaned) <= 80:
+        return True
+
+    # Pattern E: Heading-style paragraphs
+    # Word Heading styles inherit bold/underline from the style definition,
+    # but run.bold returns None ("inherited") rather than True.
+    # Check for Heading styles with short, title-like text.
+    if is_heading and len(cleaned) >= 4 and len(cleaned) <= 80:
+        # Reject generic section labels
+        lower_h = cleaned.lower().rstrip(':')
+        heading_skip = {
+            'ingredients', 'instructions', 'directions', 'notes',
+            'method', 'preparation', 'variations', 'tips',
+        }
+        if lower_h not in heading_skip:
+            return True
+
+    return False
 
 
 def is_section_header(para) -> bool:
@@ -290,6 +374,19 @@ def parse_docx(filepath: str, category: str, subcategory: str) -> list[dict]:
 
         recipe = _parse_recipe_content(title, content_lines, category, subcategory, filepath)
         recipes.append(recipe)
+
+    # Post-filter: remove single-word sub-component titles that slipped
+    # through Pattern A/B (they have underscores or bold+underline but are
+    # just sub-components of the previous recipe, e.g. "Glaze", "Frosting")
+    _SUB_COMPONENT_EXACT = {
+        'glaze', 'frosting', 'icing', 'filling', 'topping', 'crust',
+        'sauce', 'garnish', 'batter', 'coating', 'marinade', 'custard',
+        'assembly', 'broth', 'salsa', 'cake', 'pork',
+    }
+    recipes = [
+        r for r in recipes
+        if r['title'].lower().strip() not in _SUB_COMPONENT_EXACT
+    ]
 
     return recipes
 
