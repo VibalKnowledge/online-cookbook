@@ -206,7 +206,9 @@
     }
     if (!fuse) return;
 
-    var results = fuse.search(query.trim());
+    var results = fuse.search(query.trim(), { limit: 30 });
+    // Filter out weak matches
+    results = results.filter(function (r) { return r.score <= 0.3; });
     var recipes = results.map(function (r) { return r.item; });
     renderCards(recipes, 'Results for "' + query.trim() + '"');
   }
@@ -411,14 +413,14 @@
       // Build Fuse.js search index
       fuse = new Fuse(allRecipes, {
         keys: [
-          { name: 'title', weight: 3 },
-          { name: 'category', weight: 1.5 },
-          { name: 'subcategory', weight: 1.5 },
-          { name: 'ingredients', weight: 0.5 }
+          { name: 'title', weight: 5 },
+          { name: 'subcategory', weight: 1 }
         ],
-        threshold: 0.35,
+        threshold: 0.25,
+        distance: 200,
         includeScore: true,
-        minMatchCharLength: 2
+        minMatchCharLength: 2,
+        ignoreLocation: true
       });
 
       // Show 12 random recipes
