@@ -206,9 +206,19 @@
     }
     if (!fuse) return;
 
-    var results = fuse.search(query.trim(), { limit: 30 });
-    // Filter out weak matches
-    results = results.filter(function (r) { return r.score <= 0.3; });
+    // Tokenize query: each word becomes a fuzzy match requirement
+    // In Fuse.js extended search, { $and: [{title: "word"}, ...] }
+    // means every word must fuzzy-match somewhere in the title
+    var words = query.trim().split(/\s+/).filter(function (w) { return w.length > 0; });
+    var searchExpr;
+    if (words.length === 1) {
+      searchExpr = words[0];
+    } else {
+      // Build AND query: each word must match in title (or subcategory)
+      searchExpr = { $and: words.map(function (w) { return { title: w }; }) };
+    }
+
+    var results = fuse.search(searchExpr, { limit: 30 });
     var recipes = results.map(function (r) { return r.item; });
     renderCards(recipes, 'Results for "' + query.trim() + '"');
   }
@@ -416,11 +426,12 @@
           { name: 'title', weight: 5 },
           { name: 'subcategory', weight: 1 }
         ],
-        threshold: 0.25,
+        threshold: 0.35,
         distance: 200,
         includeScore: true,
         minMatchCharLength: 2,
-        ignoreLocation: true
+        ignoreLocation: true,
+        useExtendedSearch: true
       });
 
       // Show 12 random recipes
